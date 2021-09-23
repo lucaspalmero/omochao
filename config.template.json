@@ -1,0 +1,24 @@
+{
+	"srb2": {
+		"executable": "srb2kart",
+		"port": 5029,
+		"advertise": false,
+		"configFile": "~/kartserv.cfg",
+		"addonsfolder": "~/serveraddons/"
+	},
+	"discord": {
+		"token": "app token goes here",
+		"channelId": "channel id where messages are read from and written to",
+		"errorChannelId": "a channel id (preferably a hidden one) where we can write some error reports"
+	},
+	"messages": {
+		"playing": "SRB2Kart ($1/15)",
+		"booting": "Starting server...",
+		"firstBoot": "Server succesfuly booted",
+		"boot": "Server has restarted",
+		"pingEveryone": "If a user attempts to write @everyone from within the game, it will get replaced by this message",
+		"serverShutdown": "Server shutting down...",
+		"joinedGame": "$1 has joined the game ($2/15 players)",
+		"leftGame": "$1 has left the game ($2/15 players)"
+	}
+}

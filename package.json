@@ -1,0 +1,19 @@
+{
+  "name": "omochao",
+  "version": "1.0.0",
+  "description": "A wrapper and a Discord bot for SRB2Kart servers",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Lucas Palmero",
+  "license": "GPLv3",
+  "dependencies": {
+    "axios": "^0.21.4",
+    "death": "^1.1.0",
+    "discord.js": "^13.1.0",
+    "dotenv": "^10.0.0",
+    "nodejs-base64": "^2.0.0",
+    "tail": "^2.2.3"
+  }
+}
