@@ -50,6 +50,10 @@ the config file is a simple JSON file. let's go over what each field does:
 
 omochao works by running the srb2kart server through a Tmux session. in order to be able to *read* from the console, omochao stores the console's output to /tmp/srb2kartoutput. in order to *write* to it, it uses Tmux's `send-keys` command.
 
+## i want to see it in action
+
+join the server i host, [MauroKart 64](https://placeholder.com.ar/mauro) (mainly spanish-speaking, though most of us are good at english).
+
 ## contributing
 
 feel free to send PRs and request features. if you're aware of any possible security holes (i'm sure there's a few lying around) **please** let me know asap so I can push a fix.
