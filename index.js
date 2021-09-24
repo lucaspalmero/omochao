@@ -38,11 +38,11 @@ function sanitizeString(str){
 }
 
 function escapeDiscordMarkup(str) {
-	return String(str).replace("*", "\\*")
-		.replace("_", "\\_")
-		.replace("~", "\\~")
-		.replace("`", "\\`")
-		.replace("@everyone", msgs.pingEveryone);
+	return String(str).replace(/\*/g, "\\*")
+		.replace(/_/g, "\\_")
+		.replace(/~/g, "\\~")
+		.replace(/`/g, "\\`")
+		.replace(/@everyone/g, msgs.pingEveryone);
 }
 
 // run the game on a tmux session
@@ -120,7 +120,7 @@ tail.on("line", (data) => {
 	// player left?
 	else if (regexes.playerLeft.test(data)) {
 		changeUserAmount(-1);
-		let name = escapeDiscordMarkup(data.match((regexes.matchNameFromLeft)).substring(1));
+		let name = escapeDiscordMarkup(String(data.match((regexes.matchNameFromLeft))).substring(1));
 		client.channels.cache.get(config.discord.channelId).send(
 			msgs.leftGame.replace('$1', name).replace('$2', playerAmount)
 		);
