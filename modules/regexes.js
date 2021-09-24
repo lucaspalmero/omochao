@@ -4,8 +4,8 @@ module.exports = {
 	firstNameChange: /^\*Player [0-9]{1,2} renamed to .{1,22}$/,
 	nameChange: /^\*.{1,22} renamed to .{1,22}$/,
 	playerLeft: /^\*.{1,22} left the game.*/,
-	matchNameFromNameChange: /(?<=Player [0-9]{1,2} renamed to ).{1,22}$/,
 	serverStarted: /^Entering main game loop\.\.\.$/,
 	serverMessage: /^<~SERVER>.*/,
+	matchNameFromNameChange: /(?<=Player [0-9]{1,2} renamed to ).{1,22}$/,
 	matchNameFromLeft: /^.{1,22}(?= left the game)/
 };

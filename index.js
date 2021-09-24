@@ -120,7 +120,7 @@ tail.on("line", (data) => {
 	// player left?
 	else if (regexes.playerLeft.test(data)) {
 		changeUserAmount(-1);
-		let name = escapeDiscordMarkup(data.match((regexes.matchNameFromLeft)));
+		let name = escapeDiscordMarkup(data.match((regexes.matchNameFromLeft)).substring(1));
 		client.channels.cache.get(config.discord.channelId).send(
 			msgs.leftGame.replace('$1', name).replace('$2', playerAmount)
 		);
