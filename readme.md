@@ -4,7 +4,7 @@
 
 ## features
 
-- chat between a server and multiple discord channel
+- chat between a server and multiple discord channels
 - post some basic info and a few error reports to discord
 - auto reboot the server if it crashes
 - console logs include a timestamp (yay)
