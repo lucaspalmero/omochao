@@ -7,8 +7,8 @@
 - chat between a server and multiple discord channels
 - post some basic info and a few error reports to discord
 - auto reboot the server if it crashes
-- console logs include a timestamp (yay)
-- server is somewhat accessible if needed
+- log to a file, timestamp all entries (yay)
+- server console is still somewhat accessible if needed
 
 ## requirements
 
@@ -34,7 +34,7 @@ the config file is a simple JSON file. let's go over what each field does:
   - `addonsfolder` the location of your addons folder. **omochao** will load all your files in alphabetical order. if you need to load files in different order, put them under some folders so that they're loaded in a certain order (i have three folders, `a_first`, `main`, `z_last`)
 - `discord`
   - `token` app token goes here. if you've followed the guide I left in the *how-to* section, put here the token you copied on step 1
-  - `channelIds` **omochao** will write to and read from thess channels
+  - `channelIds` **omochao** will write to and read from these channels
   - `errorChannelId` if there's a nasty error, **omochao** will print some details in this channel. you should use a channel that's only visible to your server's staff
 - `messages` customize **omochao**'s messages. you'll see some messages that include a $1 and maybe a $2, those are the parts omochao will replace with the actual values. make sure to put them if the examples include them, or else the app will fail spectacularly
   - `playing` **omochao**'s bot will set this as their Discord presence. 
