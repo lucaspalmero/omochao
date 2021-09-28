@@ -8,7 +8,7 @@
 	},
 	"discord": {
 		"token": "app token goes here",
-		"channelId": "channel id where messages are read from and written to",
+		"channelIds": [ "channel ids where messages are read from and written to", "add as many as you like" ],
 		"errorChannelId": "a channel id (preferably a hidden one) where we can write some error reports"
 	},
 	"messages": {
@@ -20,5 +20,6 @@
 		"serverShutdown": "Server shutting down...",
 		"joinedGame": "$1 has joined the game ($2/15 players)",
 		"leftGame": "$1 has left the game ($2/15 players)"
-	}
+	},
+	"logLocation": "/tmp/somefolderwherelogswillgoin/"
 }

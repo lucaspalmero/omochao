@@ -1,13 +1,14 @@
 const Tail = require('tail').Tail;
 const Discord = require('discord.js');
 const fs = require('fs');
-const exec = require('child_process').exec;
+const { exec, execSync } = require('child_process');
 const base64encode = require('nodejs-base64').base64encode;
 const death = require('death');
 
 const config = require('./config.json');
 const msgs = config.messages;
-const logger = require('./modules/logs.js');
+const Logger = require('./modules/logs.js');
+const logger = new Logger(fs, config.logLocation);
 const regexes = require('./modules/regexes.js');
 
 const logfile = '/tmp/srb2kartoutput';
@@ -19,10 +20,20 @@ var firstboot = true;
 // a function to track the amount of users
 function changeUserAmount (amount) {
 	playerAmount += amount;
-	amount = Math.min(15, Math.max(0, amount));
-	logger(`Player count modified by ${amount}`);
+	playerAmount = Math.min(15, Math.max(0, playerAmount));
+	logger.log(`Player count modified by ${amount}`);
 
 	client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: 'PLAYING' });
+}
+
+// send Discord Messages to many channels
+function sendDiscordMessage(message, channels, name = '', from = null) {
+	channels.forEach((c) => {
+		let username = (name) ? `[${name}] ` : '';
+		if (c != from) {
+			client.channels.cache.get(c).send(username + message);
+		}
+	});
 }
 
 // some string functions
@@ -48,9 +59,9 @@ function escapeDiscordMarkup(str) {
 // run the game on a tmux session
 var srb2kartCommand = `${config.srb2.executable} -dedicated -port ${config.srb2.port} `
 	+ (config.srb2.advertise ? "+advertise 1 " : "")
-	+ `-config ${config.srb2.configFile} -file `
+	+ `-file `
     + `$(find ${config.srb2.addonsfolder} -type f | sort | tr '\n' ' ') `
-	+ `2>&1 | tee ${logfile}`;
+	+ `2>&1 | tee -a ${logfile}`;
 
 /** 
  * send srb2kart's command to a tmux session that will run the server inside a while true loop.
@@ -66,9 +77,9 @@ var shCommand = 'tmux new-session -d -s srb2kart \'SRB2SERVERSTART=\"'
 const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
 
 client.once('ready', () => {
-	logger(`Discord bot: Logged in as ${client.user.tag}`);
+	logger.log(`Discord bot: Logged in as ${client.user.tag}`);
 	changeUserAmount(0);
-	client.channels.cache.get(config.discord.channelId).send(msgs.booting);
+	sendDiscordMessage(msgs.booting, config.discord.channelIds);
 });
 
 client.login(config.discord.token);
@@ -77,10 +88,10 @@ client.login(config.discord.token);
 
 var srb2k = exec(shCommand, function (err, stdout, stderr) { 
 	if (stderr) {
-		logger('ERROR: ' + stderr, true);
+		logger.log('ERROR: ' + stderr, true);
 	}
 	if (err) {
-		logger('ERROR: ' + err, true);
+		logger.log('ERROR: ' + err, true);
 	}
 });
 
@@ -88,15 +99,17 @@ tail = new Tail(logfile, "\n", {}, true);
 
 // here we'll check every line tailed from the console's logs.
 tail.on("line", (data) => {
-	logger(data);
+	logger.log(data);
 
 	// server is up?
 	if (regexes.serverStarted.test(data)) {
 		if (firstboot) {
 			firstboot = false
-			client.channels.cache.get(config.discord.channelId).send(msgs.firstBoot);
+			sendDiscordMessage(msgs.firstBoot, config.discord.channelIds);
 		} else {
-			client.channels.cache.get(config.discord.channelId).send(msgs.boot);
+			// maybe there was a crash, reset just in case
+			changeUserAmount(-9999);
+			sendDiscordMessage(msgs.boot, config.discord.channelIds);
 		}
 	}
 	// is it a message?
@@ -104,7 +117,7 @@ tail.on("line", (data) => {
 		let msg = escapeDiscordMarkup(data);
 		//check if it's a server message
 		if (!regexes.serverMessage.test(data)) {
-			client.channels.cache.get(config.discord.channelId).send(msg);
+			sendDiscordMessage(msg, config.discord.channelIds);
 		}
 	}
 	// a login?
@@ -113,16 +126,25 @@ tail.on("line", (data) => {
 	}
 	else if (regexes.firstNameChange.test(data)) {
 		let name = escapeDiscordMarkup(data.match(regexes.matchNameFromNameChange));
-		client.channels.cache.get(config.discord.channelId).send(
-			msgs.joinedGame.replace('$1', name).replace('$2', playerAmount)
+		sendDiscordMessage(
+			msgs.joinedGame.replace('$1', name).replace('$2', playerAmount),
+			config.discord.channelIds
 		);
 	}
 	// player left?
 	else if (regexes.playerLeft.test(data)) {
 		changeUserAmount(-1);
 		let name = escapeDiscordMarkup(String(data.match((regexes.matchNameFromLeft))).substring(1));
-		client.channels.cache.get(config.discord.channelId).send(
-			msgs.leftGame.replace('$1', name).replace('$2', playerAmount)
+		sendDiscordMessage(
+			msgs.leftGame.replace('$1', name).replace('$2', playerAmount),
+			config.discord.channelIds
+		);
+	}
+	// maybe an error?
+	else if (String(data).toLowerCase().includes("error")) {
+		logger.log(`Possible error: ${data}`);
+		client.channels.cache.get(config.discord.errorChannelId).send(
+			`Possible error: ${data}`
 		);
 	}
 });
@@ -130,21 +152,31 @@ tail.on("line", (data) => {
 // send messages to the server
 
 client.on('message', async (msg) => {
-	if (!msg.author.bot && msg.channelId == config.discord.channelId) {
+	if (!msg.author.bot && config.discord.channelIds.includes(msg.channelId)) {
 		var username = sanitizeString(msg.author.username);
 		var message = sanitizeString(msg.content);
 		var toSend = `[${username}] ${message}`;	
 
-		logger(`Sending message to server: ${toSend}`);
+		sendDiscordMessage(message, config.discord.channelIds, username, msg.channelId);
+
+		logger.log(`Sending message to server: ${toSend}`);
 
 		var tmuxSendKeys = exec(`tmux send-keys -t srb2kart:0 'printchat "${toSend}"' C-m`, function (err, stdout, stderr) { 
 			if (stderr) {
-				logger(stderr);
+				logger.log(stderr);
 			}
-			logger(`Sent!`);
+			logger.log(`Sent!`);
 		});
 	}
 })
+
+// just in case something goes awry.
+// source: https://stackoverflow.com/questions/32719923/redirecting-stdout-to-file-nodejs
+ /*
+process.on('uncaughtException', function(err) {
+	  console.error((err && err.stack) ? err.stack : err);
+});
+*/
 
 // cleanup when we exit, make sure to close that tmux session also
 
@@ -152,18 +184,21 @@ death(function(signal, err) {
 	var emoji = config.discord.errorEmoji;
 	var toTag = "";
 
-	logger("Server's dead, giving some time to close everything...", err);
+	logger.log("Server's dead, giving some time to close everything...", err);
 
 	client.channels.cache.get(config.discord.errorChannelId).send(
 		`Signal: ${signal} - Error: ${err}`
 	);
-	client.channels.cache.get(config.discord.channelId).send(msgs.serverShutdown);
+	sendDiscordMessage(
+		msgs.serverShutdown,
+		config.discord.channelIds
+	);
 
 	var tmuxKill = exec('tmux kill-session -t srb2kart', function (err, stdout, stderr) { 
 	});
 
 	setTimeout(() => {
-		logger("Closing server...");
+		logger.log("Closing server...");
 		process.exit()
 	}, 2000);
 });
