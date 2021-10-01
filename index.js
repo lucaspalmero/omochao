@@ -28,12 +28,25 @@ function changeUserAmount (amount) {
 
 // send Discord Messages to many channels
 function sendDiscordMessage(message, channels, name = '', from = null) {
-	channels.forEach((c) => {
-		let username = (name) ? `[${name}] ` : '';
-		if (c != from) {
-			client.channels.cache.get(c).send(username + message);
+	try {
+		channels.forEach((c) => {
+			let username = (name) ? `[${name}] ` : '';
+			if (c != from) {
+				client.channels.cache.get(c).send(username + message);
+			}
+		});
+	} catch (e) {
+		logger.log("Error while sending message to Discord", true);
+		let error = JSON.stringify(e);
+		logger.log(error, true);
+		try {
+			client.channels.cache.get(config.discord.errorChannelId).send(
+				`Error while posting to Discord! Error: \`\`\`\n${error}\n\`\`\``
+			);
+		} catch(e) {
+			logger.log("Discord alert failed as well!!!", true);
 		}
-	});
+	}
 }
 
 // some string functions
@@ -141,7 +154,7 @@ tail.on("line", (data) => {
 		);
 	}
 	// maybe an error?
-	else if (String(data).toLowerCase().includes("error")) {
+	else if (String(data).toLowerCase().includes("error") && !String(data).includes("Next map given")) {
 		logger.log(`Possible error: ${data}`);
 		client.channels.cache.get(config.discord.errorChannelId).send(
 			`Possible error: ${data}`

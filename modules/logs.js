@@ -28,6 +28,11 @@ module.exports = class Logger {
 		return this.fileLocation + `/srb2kartlog-${date}`;
 	}
 
+	getErrorFilename() {
+		let date = this.getDate();
+		return this.fileLocation + `/srb2kartlog-errors-${date}`;
+	}
+
 	log(text, err = false) {
 		let color = err ? "\x1b[31m" : "";
 		let dateDisplay = this.getDateAndHours();
@@ -36,7 +41,7 @@ module.exports = class Logger {
 		if (this.fileLocation) {
 			let date = this.getDate();
 			this.fs.appendFileSync(
-				this.getFilename(),
+				err ? this.getErrorFilename() : this.getFilename(),
 				`\n[${dateDisplay}] ${text}`,
 				{ flag: "a" }
 			);
