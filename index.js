@@ -154,7 +154,11 @@ tail.on("line", (data) => {
 		);
 	}
 	// maybe an error?
-	else if (String(data).toLowerCase().includes("error") && !String(data).includes("Next map given")) {
+	else if (
+		String(data).toLowerCase().includes("error") 
+		&& !String(data).includes("Next map given")
+		&& !String(data).includes("printchat")
+	) {
 		logger.log(`Possible error: ${data}`);
 		client.channels.cache.get(config.discord.errorChannelId).send(
 			`Possible error: ${data}`
@@ -172,13 +176,10 @@ client.on('message', async (msg) => {
 
 		sendDiscordMessage(message, config.discord.channelIds, username, msg.channelId);
 
-		logger.log(`Sending message to server: ${toSend}`);
-
 		var tmuxSendKeys = exec(`tmux send-keys -t srb2kart:0 'printchat "${toSend}"' C-m`, function (err, stdout, stderr) { 
 			if (stderr) {
 				logger.log(stderr);
 			}
-			logger.log(`Sent!`);
 		});
 	}
 })
