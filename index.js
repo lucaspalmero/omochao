@@ -17,6 +17,9 @@ const logfile = '/tmp/srb2kartoutput';
 var playerAmount = 0;
 var firstboot = true;
 
+// touch the outputfile
+execSync(`touch ${logfile}`);
+
 // a function to track the amount of users
 function changeUserAmount (amount) {
 	playerAmount += amount;
@@ -66,7 +69,8 @@ function escapeDiscordMarkup(str) {
 		.replace(/_/g, "\\_")
 		.replace(/~/g, "\\~")
 		.replace(/`/g, "\\`")
-		.replace(/@everyone/g, msgs.pingEveryone);
+		.replace(/@everyone/g, msgs.pingEveryone)
+		.replace(/@here/g, msgs.pingEveryone);
 }
 
 // run the game on a tmux session
