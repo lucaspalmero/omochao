@@ -32,6 +32,8 @@ the config file is a simple JSON file. let's go over what each field does:
   - `port` the port which the server will listen
   - `advertise` should this server be advertised on the Master Server?
   - `addonsfolder` the location of your addons folder. **omochao** will load all your files in alphabetical order. if you need to load files in different order, put them under some folders so that they're loaded in a certain order (i have three folders, `a_first`, `main`, `z_last`)
+  - `srb2mode` if true, checks for SRB2 login messages (which doesn't do the "player has joined, player has renames to" thing)
+  - `showMapChange` if true, prints a message whenever a new map is loaded
 - `discord`
   - `token` app token goes here. if you've followed the guide I left in the *how-to* section, put here the token you copied on step 1
   - `channelIds` **omochao** will write to and read from these channels
