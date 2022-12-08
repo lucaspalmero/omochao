@@ -4,7 +4,9 @@
 		"port": 5029,
 		"advertise": false,
 		"configFile": "~/kartserv.cfg",
-		"addonsfolder": "~/serveraddons/"
+		"addonsfolder": "~/serveraddons/",
+		"srb2mode": false,
+		"showMapChange": false
 	},
 	"discord": {
 		"token": "app token goes here",
@@ -19,7 +21,8 @@
 		"pingEveryone": "If a user attempts to write @everyone from within the game, it will get replaced by this message",
 		"serverShutdown": "Server shutting down...",
 		"joinedGame": "$1 has joined the game ($2/15 players)",
-		"leftGame": "$1 has left the game ($2/15 players)"
+		"leftGame": "$1 has left the game ($2/15 players)",
+		"mapChange": "Map is now _$1_"
 	},
 	"logLocation": "/tmp/somefolderwherelogswillgoin/"
 }

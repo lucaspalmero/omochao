@@ -138,6 +138,14 @@ tail.on("line", (data) => {
 		}
 	}
 	// a login?
+	else if (config.srb2.srb2mode && regexes.srb2PlayerLogin) {
+		changeUserAmount(1);
+		let name = escapeDiscordMarkup(data.match(regexes.matchNameFromSrb2Login));
+		sendDiscordMessage(
+			msgs.joinedGame.replace('$1', name).replace('$2', playerAmount),
+			config.discord.channelIds
+		);
+	}
 	else if (regexes.playerLogin.test(data)) {
 		changeUserAmount(1);
 	}
@@ -147,6 +155,14 @@ tail.on("line", (data) => {
 			msgs.joinedGame.replace('$1', name).replace('$2', playerAmount),
 			config.discord.channelIds
 		);
+	}
+	// a map change?
+	else if (config.srb2.showMapChange && regexes.mapChange.test(data)) {
+		let name = escapeDiscordMarkup(data.match(regexes.matchMapFromMapChange));
+		sendDiscordMessage(
+			msgs.mapChange.replace('$1', name),
+			config.discord.channelIds
+		)
 	}
 	// player left?
 	else if (regexes.playerLeft.test(data)) {
