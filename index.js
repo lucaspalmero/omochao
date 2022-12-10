@@ -25,8 +25,10 @@ function changeUserAmount (amount) {
 	playerAmount += amount;
 	playerAmount = Math.min(15, Math.max(0, playerAmount));
 	logger.log(`Player count modified by ${amount}`);
-
-	client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: 'PLAYING' });
+	
+	if (client.user) {
+		client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: 'PLAYING' });
+	}
 }
 
 // send Discord Messages to many channels
