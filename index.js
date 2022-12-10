@@ -27,7 +27,20 @@ function changeUserAmount (amount) {
 	logger.log(`Player count modified by ${amount}`);
 	
 	if (client.user) {
-		client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: 'PLAYING' });
+		try {
+			client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: 'PLAYING' });
+		} catch (e) {
+			logger.log("Error while updating activity", true);
+			let error = JSON.stringify(e);
+			logger.log(error, true);
+			try {
+				client.channels.cache.get(config.discord.errorChannelId).send(
+					`Error while updating activity! Error: \`\`\`\n${error}\n\`\`\``
+				);
+			} catch(e) {
+				logger.log("Discord alert failed as well!!!", true);
+			}
+		}
 	}
 }
 
@@ -51,6 +64,14 @@ function sendDiscordMessage(message, channels, name = '', from = null) {
 		} catch(e) {
 			logger.log("Discord alert failed as well!!!", true);
 		}
+	}
+}
+
+function sendErrorMessage(message, channel) {
+	try {
+		client.channels.cache.get(config.discord.errorChannelId).send(message);
+	} catch(e) {
+		logger.log("Failed to send the following message to Discord: " + message, true);
 	}
 }
 
@@ -182,9 +203,7 @@ tail.on("line", (data) => {
 		&& !String(data).includes("printchat")
 	) {
 		logger.log(`Possible error: ${data}`);
-		client.channels.cache.get(config.discord.errorChannelId).send(
-			`Possible error: ${data}`
-		);
+		sendErrorMessage(`Possible error: ${data}`, config.discord.errorCHannelId)
 	}
 });
 
@@ -222,16 +241,17 @@ death(function(signal, err) {
 
 	logger.log("Server's dead, giving some time to close everything...", err);
 
-	client.channels.cache.get(config.discord.errorChannelId).send(
+	var tmuxKill = exec('tmux kill-session -t srb2kart', function (err, stdout, stderr) { 
+	});
+
+	sendErrorMessage(
 		`Signal: ${signal} - Error: ${err}`
-	);
+		, config.discord.errorChannelId
+	)
 	sendDiscordMessage(
 		msgs.serverShutdown,
 		config.discord.channelIds
 	);
-
-	var tmuxKill = exec('tmux kill-session -t srb2kart', function (err, stdout, stderr) { 
-	});
 
 	setTimeout(() => {
 		logger.log("Closing server...");
