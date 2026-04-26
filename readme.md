@@ -18,8 +18,7 @@
 
 ## how-to & instalation
 
-- set up an application and a bot. if you don't know how, you can follow [this tutorial](https://buddy.works/tutorials/how-to-build-a-discord-bot-in-node-js-for-beginners) until step 2. make sure to save that token
-- make sure you're using an up-to-date node version ([here's some help](https://askubuntu.com/questions/426750/how-can-i-update-my-nodejs-to-the-latest-version)). clone/download this repo, run `npm install`
+- set up an application and a bot. if you don't know how, you can follow [this tutorial](https://buddy.works/tutorials/how-to-build-a-discord-bot-in-node-js-for-beginners) until step 2. make sure to save that token. don't forget to set the  **Message Content Intent** under "Privileged Gateway Intents", without it the bot cannot read messages and the bridge will be one-way only
 - load the included `omochao.lua` file in your server. feel free to redistribute, modify, repack, or anything else you'd like to do with it
 - create a new file named `config.json`, copy the contents of `config.template.json` in it and modify it as per your needs
 - run `./start.sh` to launch both the wrapper and the file server side by side. if you don't need the file server, run `npm start` instead

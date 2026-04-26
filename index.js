@@ -1,5 +1,5 @@
 const Tail = require('tail').Tail;
-const Discord = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType, Events } = require('discord.js');
 const fs = require('fs');
 const { exec, execSync } = require('child_process');
 const base64encode = require('nodejs-base64').base64encode;
@@ -38,7 +38,7 @@ function changeUserAmount (amount) {
 	
 	if (client.user) {
 		try {
-			client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: 'PLAYING' });
+			client.user.setActivity(msgs.playing.replace('$1', playerAmount), { type: ActivityType.Playing });
 		} catch (e) {
 			logger.log("Error while updating activity", true);
 			let error = JSON.stringify(e);
@@ -102,6 +102,9 @@ function escapeDiscordMarkup(str) {
 		.replace(/_/g, "\\_")
 		.replace(/~/g, "\\~")
 		.replace(/`/g, "\\`")
+		.replace(/>/g, "\\>")
+		.replace(/</g, "\\<")
+		.replace(/\|/g, "\\|")
 		.replace(/@everyone/g, msgs.pingEveryone)
 		.replace(/@here/g, msgs.pingEveryone);
 }
@@ -124,12 +127,35 @@ var shCommand = 'tmux new-session -d -s srb2kart \'SRB2SERVERSTART=\"'
 
 // start the discord bot
 
-const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
+const client = new Client({
+	intents: [
+		GatewayIntentBits.Guilds,
+		GatewayIntentBits.GuildMessages,
+		GatewayIntentBits.MessageContent
+	]
+});
 
-client.once('ready', () => {
+client.once(Events.ClientReady, () => {
 	logger.log(`Discord bot: Logged in as ${client.user.tag}`);
 	changeUserAmount(0);
 	sendDiscordMessage(msgs.booting, config.discord.channelIds);
+});
+
+// surface gateway lifecycle events so disconnects don't go unnoticed.
+client.on('shardError', (error) => {
+	logger.log(`Discord shard error: ${error && error.stack ? error.stack : error}`, true);
+	sendErrorMessage(`Discord shard error: ${error && error.message ? error.message : error}`);
+});
+client.on('shardDisconnect', (event, shardId) => {
+	const detail = event ? `code ${event.code} reason ${event.reason}` : '';
+	logger.log(`Discord shard ${shardId} disconnected ${detail}`, true);
+	sendErrorMessage(`Discord shard ${shardId} disconnected ${detail}`);
+});
+client.on('shardReconnecting', (shardId) => {
+	logger.log(`Discord shard ${shardId} reconnecting...`);
+});
+client.on('shardResume', (shardId, replayed) => {
+	logger.log(`Discord shard ${shardId} resumed (replayed ${replayed} events)`);
 });
 
 client.login(config.discord.token);
@@ -217,7 +243,7 @@ tail.on("line", (data) => {
 		&& !String(data).includes("printchat")
 	) {
 		logger.log(`Possible error: ${data}`);
-		sendErrorMessage(`Possible error: ${data}`, config.discord.errorCHannelId)
+		sendErrorMessage(`Possible error: ${data}`, config.discord.errorChannelId)
 	}
 });
 
@@ -258,7 +284,7 @@ if (heartbeatEnabled) {
 
 // send messages to the server
 
-client.on('message', async (msg) => {
+client.on(Events.MessageCreate, async (msg) => {
 	if (!msg.author.bot && config.discord.channelIds.includes(msg.channelId)) {
 		var username = sanitizeString(msg.author.username);
 		var message = sanitizeString(msg.content);
@@ -284,26 +310,33 @@ process.on('uncaughtException', function(err) {
 
 // cleanup when we exit, make sure to close that tmux session also
 
-death(function(signal, err) {
-	var emoji = config.discord.errorEmoji;
-	var toTag = "";
-
+death(async function(signal, err) {
 	logger.log("Server's dead, giving some time to close everything...", err);
 
-	var tmuxKill = exec('tmux kill-session -t srb2kart', function (err, stdout, stderr) { 
-	});
+	exec('tmux kill-session -t srb2kart', () => {});
 
-	sendErrorMessage(
-		`Signal: ${signal} - Error: ${err}`
-		, config.discord.errorChannelId
-	)
-	sendDiscordMessage(
-		msgs.serverShutdown,
-		config.discord.channelIds
-	);
+	// queue shutdown messages directly so we can await them, with a 5s ceiling.
+	const sends = [];
+	try {
+		const errCh = client.channels.cache.get(config.discord.errorChannelId);
+		if (errCh && typeof errCh.send === 'function') {
+			sends.push(errCh.send(`Signal: ${signal} - Error: ${err}`).catch(() => {}));
+		}
+		for (const id of config.discord.channelIds) {
+			const ch = client.channels.cache.get(id);
+			if (ch && typeof ch.send === 'function') {
+				sends.push(ch.send(msgs.serverShutdown).catch(() => {}));
+			}
+		}
+	} catch (e) {
+		logger.log(`Failed to queue shutdown messages: ${e}`, true);
+	}
 
-	setTimeout(() => {
-		logger.log("Closing server...");
-		process.exit()
-	}, 2000);
+	await Promise.race([
+		Promise.allSettled(sends),
+		new Promise((resolve) => setTimeout(resolve, 5000))
+	]);
+
+	logger.log("Closing server...");
+	process.exit();
 });

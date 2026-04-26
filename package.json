@@ -10,10 +10,8 @@
   "author": "Lucas Palmero",
   "license": "GPLv3",
   "dependencies": {
-    "axios": "^0.21.4",
     "death": "^1.1.0",
-    "discord.js": "^13.1.0",
-    "dotenv": "^10.0.0",
+    "discord.js": "^14.16.0",
     "nodejs-base64": "^2.0.0",
     "tail": "^2.2.3"
   }
