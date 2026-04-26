@@ -6,7 +6,17 @@
 		"configFile": "~/kartserv.cfg",
 		"addonsfolder": "~/serveraddons/",
 		"srb2mode": false,
-		"showMapChange": false
+		"showMapChange": false,
+		"heartbeat": {
+			"enabled": true,
+			"idleSeconds": 60,
+			"deadSeconds": 120
+		}
+	},
+	"fileServer": {
+		"enabled": true,
+		"port": 8080,
+		"path": "~/serveraddons/"
 	},
 	"discord": {
 		"token": "app token goes here",

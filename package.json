@@ -4,7 +4,8 @@
   "description": "A wrapper and a Discord bot for SRB2Kart servers",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "fileserver": "node fileserver.js"
   },
   "author": "Lucas Palmero",
   "license": "GPLv3",

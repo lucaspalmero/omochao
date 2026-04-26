@@ -17,6 +17,16 @@ const logfile = '/tmp/srb2kartoutput';
 var playerAmount = 0;
 var firstboot = true;
 
+// heartbeat watcher state
+var heartbeatCfg = (config.srb2 && config.srb2.heartbeat) || {};
+var heartbeatEnabled = heartbeatCfg.enabled !== false;
+var heartbeatIdleMs = (heartbeatCfg.idleSeconds || 60) * 1000;
+var heartbeatDeadMs = (heartbeatCfg.deadSeconds || 120) * 1000;
+var lastLineAt = Date.now();
+var heartbeatProbeSent = false;
+var heartbeatActive = false;
+var heartbeatKilling = false;
+
 // touch the outputfile
 execSync(`touch ${logfile}`);
 
@@ -139,10 +149,14 @@ tail = new Tail(logfile, "\n", {}, true);
 
 // here we'll check every line tailed from the console's logs.
 tail.on("line", (data) => {
+	lastLineAt = Date.now();
+	heartbeatProbeSent = false;
 	logger.log(data);
 
 	// server is up?
 	if (regexes.serverStarted.test(data)) {
+		heartbeatActive = true;
+		heartbeatKilling = false;
 		if (firstboot) {
 			firstboot = false
 			sendDiscordMessage(msgs.firstBoot, config.discord.channelIds);
@@ -161,7 +175,7 @@ tail.on("line", (data) => {
 		}
 	}
 	// a login?
-	else if (config.srb2.srb2mode && regexes.srb2PlayerLogin) {
+	else if (config.srb2.srb2mode && regexes.srb2PlayerLogin.test(data)) {
 		changeUserAmount(1);
 		let name = escapeDiscordMarkup(data.match(regexes.matchNameFromSrb2Login));
 		sendDiscordMessage(
@@ -206,6 +220,41 @@ tail.on("line", (data) => {
 		sendErrorMessage(`Possible error: ${data}`, config.discord.errorCHannelId)
 	}
 });
+
+/**
+ * this part asks for a heartbeat if the server is quiet for too long.
+ * if it still prints out nothing, we assume it died and we restart it.
+ * the heartbeat is defined in omochao.lua
+ */
+if (heartbeatEnabled) {
+	setInterval(() => {
+		if (!heartbeatActive || heartbeatKilling) return;
+		const elapsed = Date.now() - lastLineAt;
+
+		if (elapsed > heartbeatDeadMs) {
+			heartbeatKilling = true;
+			const seconds = Math.round(elapsed / 1000);
+			logger.log(`Server appears hung (${seconds}s silent). Force-restarting.`, true);
+			sendErrorMessage(
+				`Server hung — no output for ${seconds}s. Force-restarting.`,
+				config.discord.errorChannelId
+			);
+			exec('pkill -9 -f srb2kart', (err, stdout, stderr) => {
+				if (err && err.code !== 1) {
+					logger.log(`pkill error: ${err}`, true);
+				}
+			});
+			return;
+		}
+
+		if (elapsed > heartbeatIdleMs && !heartbeatProbeSent) {
+			heartbeatProbeSent = true;
+			exec(`tmux send-keys -t srb2kart:0 'heartbeat' C-m`, (err) => {
+				if (err) logger.log(`heartbeat probe error: ${err}`, true);
+			});
+		}
+	}, 15000);
+}
 
 // send messages to the server
 

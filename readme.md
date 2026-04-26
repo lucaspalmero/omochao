@@ -9,6 +9,7 @@
 - auto reboot the server if it crashes
 - log to a file, timestamp all entries (yay)
 - server console is still somewhat accessible if needed
+- built-in HTTP file server for SRB2Kart's `http_source` downloads, with automatic flattening of addons stored in subfolders
 
 ## requirements
 
@@ -19,8 +20,9 @@
 
 - set up an application and a bot. if you don't know how, you can follow [this tutorial](https://buddy.works/tutorials/how-to-build-a-discord-bot-in-node-js-for-beginners) until step 2. make sure to save that token
 - make sure you're using an up-to-date node version ([here's some help](https://askubuntu.com/questions/426750/how-can-i-update-my-nodejs-to-the-latest-version)). clone/download this repo, run `npm install`
-- load the included `printchat.lua` file in your server. feel free to redistribute, modify, repack, or anything else you'd like to do with it
+- load the included `omochao.lua` file in your server. feel free to redistribute, modify, repack, or anything else you'd like to do with it
 - create a new file named `config.json`, copy the contents of `config.template.json` in it and modify it as per your needs
+- run `./start.sh` to launch both the wrapper and the file server side by side. if you don't need the file server, run `npm start` instead
 
 if you ever need to access your server's console, you can do so by attaching the `srb2kart` Tmux session (`tmux attach -t srb2kart`). be aware though that the way this app manages to send messages to the server is by (ab)using the `send-keys` command. if someone sends a message while the server is running their message will be inputted to the console as if you were typing it.
 
@@ -34,6 +36,13 @@ the config file is a simple JSON file. let's go over what each field does:
   - `addonsfolder` the location of your addons folder. **omochao** will load all your files in alphabetical order. if you need to load files in different order, put them under some folders so that they're loaded in a certain order (i have three folders, `a_first`, `main`, `z_last`)
   - `srb2mode` if true, checks for SRB2 login messages (which doesn't do the "player has joined, player has renames to" thing)
   - `showMapChange` if true, prints a message whenever a new map is loaded
+  - `heartbeat` detects a frozen server and force-restarts it. if no output is seen for `idleSeconds`, omochao sends a heartbeat request to the server. if it still doesn't ouput anything after `deadSeconds`, omochao SIGKILLs the `srb2kart` process so the wrapper loop in `runindefinitely.sh` respawns it. set `enabled: false` to disable
+    - `idleSeconds` how long to wait without any output before asking for a heartbeat
+    - `deadSeconds` how long to wait without any output before force-restarting the server. must be larger than `idleSeconds`
+- `fileServer` — built-in HTTP server for SRB2Kart's `http_source` downloads. it flattens the file structure so you can have as many subfolders as you like.
+  - `enabled` 
+  - `port` the port the file server listens on
+  - `path` the folder to serve. you can (and should) point this at the **same folder** as `srb2.addonsfolder`. the file server walks subfolders recursively and exposes every file by its **basename** so you can have as many subfolders as you like. if two addons in different subfolders share a filename only one is served and the collision is logged to the error log
 - `discord`
   - `token` app token goes here. if you've followed the guide I left in the *how-to* section, put here the token you copied on step 1
   - `channelIds` **omochao** will write to and read from these channels
@@ -55,10 +64,10 @@ omochao works by running the srb2kart server through a Tmux session. in order to
 
 ## i want to see it in action
 
-join the server i host, [MauroKart 64](https://placeholder.com.ar/mauro) (mainly spanish-speaking, though most of us are good at english).
+join the server i host, [MauroKart 64](https://placeholder.com.ar/mauro) (mainly spanish-speaking, though most of us speak english).
 
 ## contributing
 
 feel free to send PRs and request features. if you're aware of any possible security holes (i'm sure there's a few lying around) **please** let me know asap so I can push a fix.
 
-contact me at `daibutsu#5089` or shoot me an email to `lucas@placeholder.com.ar`
+contact me at `daibutsu_` (on discord) or shoot me an email to `lucas@placeholder.com.ar`
