@@ -30,6 +30,27 @@ var heartbeatKilling = false;
 // touch the outputfile
 execSync(`touch ${logfile}`);
 
+// kill any leftover tmux session / srb2kart process from a previous run that
+// didn't shut down cleanly (SIGKILL, OOM, segfault, sync throw before our
+// process-level handlers were registered, etc.). without this, the new tmux
+// new-session call fails because the name "srb2kart" is already taken.
+function killOrphanTmuxSession() {
+	let hadOrphan = false;
+	try {
+		execSync('tmux has-session -t srb2kart 2>/dev/null');
+		hadOrphan = true;
+	} catch (e) {
+		// non-zero exit = no session, which is what we want
+	}
+	if (hadOrphan) {
+		logger.log('Found orphaned tmux session "srb2kart" from a previous run. Killing it.', true);
+		try { execSync('tmux kill-session -t srb2kart'); } catch (e) {}
+	}
+	// also reap any leftover srb2kart binary that escaped the session.
+	try { execSync('pkill -9 -f srb2kart 2>/dev/null'); } catch (e) {}
+}
+killOrphanTmuxSession();
+
 // a function to track the amount of users
 function changeUserAmount (amount) {
 	playerAmount += amount;
@@ -139,6 +160,9 @@ client.once(Events.ClientReady, () => {
 	logger.log(`Discord bot: Logged in as ${client.user.tag}`);
 	changeUserAmount(0);
 	sendDiscordMessage(msgs.booting, config.discord.channelIds);
+	// boot the game server only after Discord is ready, so the
+	// firstBoot / boot Discord messages can never be dropped.
+	bootServerAndAttachTail();
 });
 
 // surface gateway lifecycle events so disconnects don't go unnoticed.
@@ -158,23 +182,52 @@ client.on('shardResume', (shardId, replayed) => {
 	logger.log(`Discord shard ${shardId} resumed (replayed ${replayed} events)`);
 });
 
-client.login(config.discord.token);
-
-// run the game, tail the logs
-
-var srb2k = exec(shCommand, function (err, stdout, stderr) { 
-	if (stderr) {
-		logger.log('ERROR: ' + stderr, true);
-	}
-	if (err) {
-		logger.log('ERROR: ' + err, true);
-	}
+client.login(config.discord.token).catch((err) => {
+	logger.log(`Discord login failed: ${err && err.stack ? err.stack : err}`, true);
+	console.error('Discord login failed; exiting so start.sh can decide whether to retry.');
+	process.exit(1);
 });
 
-tail = new Tail(logfile, "\n", {}, true);
+// catch-all process error handlers. discord.js' internal HTTP layer (undici)
+// can reject promises that aren't tied to any shard event we listen for —
+// network blips during a reconnect have crashed the wrapper before. swallow
+// them so the wrapper stays up and the gateway client can keep retrying.
+function reportProcessError(label, err) {
+	try {
+		const stack = (err && err.stack) ? err.stack : String(err);
+		logger.log(`${label}: ${stack}`, true);
+		if (client && client.channels) {
+			const errCh = client.channels.cache.get(config.discord.errorChannelId);
+			if (errCh && typeof errCh.send === 'function') {
+				const message = (err && err.message) ? err.message : String(err);
+				errCh.send(`\`${label}\`: \`\`\`\n${message}\n\`\`\``).catch(() => {});
+			}
+		}
+	} catch (e) {
+		try { console.error('reportProcessError failed:', e, 'original:', err); } catch {}
+	}
+}
 
-// here we'll check every line tailed from the console's logs.
-tail.on("line", (data) => {
+process.on('uncaughtException', (err) => reportProcessError('uncaughtException', err));
+process.on('unhandledRejection', (reason) => reportProcessError('unhandledRejection', reason));
+
+// run the game and tail the logs. invoked from the ClientReady handler
+// above so that the bridge is fully alive before any tail-driven Discord
+// messages can fire.
+function bootServerAndAttachTail() {
+	exec(shCommand, function (err, stdout, stderr) {
+		if (stderr) {
+			logger.log('ERROR: ' + stderr, true);
+		}
+		if (err) {
+			logger.log('ERROR: ' + err, true);
+		}
+	});
+
+	const tail = new Tail(logfile, "\n", {}, true);
+
+	// here we'll check every line tailed from the console's logs.
+	tail.on("line", (data) => {
 	lastLineAt = Date.now();
 	heartbeatProbeSent = false;
 	logger.log(data);
@@ -245,7 +298,8 @@ tail.on("line", (data) => {
 		logger.log(`Possible error: ${data}`);
 		sendErrorMessage(`Possible error: ${data}`, config.discord.errorChannelId)
 	}
-});
+	});
+}
 
 /**
  * this part asks for a heartbeat if the server is quiet for too long.
@@ -299,14 +353,6 @@ client.on(Events.MessageCreate, async (msg) => {
 		});
 	}
 })
-
-// just in case something goes awry.
-// source: https://stackoverflow.com/questions/32719923/redirecting-stdout-to-file-nodejs
- /*
-process.on('uncaughtException', function(err) {
-	  console.error((err && err.stack) ? err.stack : err);
-});
-*/
 
 // cleanup when we exit, make sure to close that tmux session also
 
